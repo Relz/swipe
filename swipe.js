@@ -44,6 +44,7 @@
     options = options || {};
 
     // setup initial vars
+    var isActive = false;
     var start = {};
     var delta = {};
     var isScrolling;
@@ -214,12 +215,14 @@
         // Fix #146
         if (isMouseEvent(event)) event.preventDefault();
 
+        isActive = true;
+
         // measure start values
         start = {
 
           // get initial touch coords
-          x: touches.pageX,
-          y: touches.pageY,
+          x: touches.clientX,
+          y: touches.clientY,
 
           // store time to determine touch duration
           time: +new Date()
@@ -231,20 +234,14 @@
 
         // reset delta and end measurements
         delta = {};
-
-        // attach touchmove and touchend listeners
-        if (isMouseEvent(event)) {
-          element.addEventListener('mousemove', this, false);
-          element.addEventListener('mouseup', this, false);
-          element.addEventListener('mouseleave', this, false);
-        } else {
-          element.addEventListener('touchmove', this, browser.passiveEvents ? { passive: false } : false);
-          element.addEventListener('touchend', this, false);
-        }
         runDragStart(getPos(), slides[index]);
       },
 
       move: function(event) {
+        if (!isActive) {
+          return;
+        }
+
         var touches;
 
         if (isMouseEvent(event)) {
@@ -265,17 +262,20 @@
 
         // measure change in x and y
         delta = {
-          x: touches.pageX - start.x,
-          y: touches.pageY - start.y
+          x: touches.clientX - start.x,
+          y: touches.clientY - start.y,
         };
 
         // determine if scrolling test has run - one time test
         if ( typeof isScrolling === 'undefined') {
-          isScrolling = !!( isScrolling || Math.abs(delta.x) < Math.abs(delta.y) );
+          isScrolling = !!( isScrolling || Math.abs(delta.x * 3) < Math.abs(delta.y) );
         }
 
         // if user is not trying to scroll vertically
-        if (!isScrolling) {
+        if (isScrolling) {
+          isActive = false;
+          return;
+        } else {
 
           // if it is not already scrolling
           if (isCancelable(event)) {
@@ -333,6 +333,9 @@
       },
 
       end: function(event) {
+        if (!isActive) {
+          return;
+        }
 
         // measure duration
         var duration = +new Date() - start.time;
@@ -411,15 +414,9 @@
           }
         }
 
-        // kill touchmove and touchend event listeners until touchstart called again
-        if (isMouseEvent(event)) {
-          element.removeEventListener('mousemove', events, false);
-          element.removeEventListener('mouseup', events, false);
-          element.removeEventListener('mouseleave', events, false);
-        } else {
-          element.removeEventListener('touchmove', events, browser.passiveEvents ? { passive: false } : false);
-          element.removeEventListener('touchend', events, false);
-        }
+
+        isActive = false;
+
         runDragEnd(getPos(), slides[index]);
       },
 
@@ -508,10 +505,14 @@
         // set touchstart event on element
         if (browser.touch) {
           element.addEventListener('touchstart', events, browser.passiveEvents ? { passive: true } : false);
+          element.addEventListener('touchmove', events, browser.passiveEvents ? { passive: false } : false);
+          element.addEventListener('touchend', events, false);
         }
 
         if (options.draggable) {
           element.addEventListener('mousedown', events, false);
+          element.addEventListener('mouseup', events, false);
+          element.addEventListener('mouseleave', events, false);
         }
 
         if (browser.transitions) {
