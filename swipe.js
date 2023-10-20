@@ -584,7 +584,9 @@
       slidePos = new Array(slides.length);
 
       // determine width of each slide
-      width = container.getBoundingClientRect().width || container.offsetWidth;
+      width = parseFloat(window.getComputedStyle(container, null).getPropertyValue('width'))
+        || container.getBoundingClientRect().width
+        || container.offsetWidth;
 
       element.style.width = (slides.length * width * 2) + 'px';
 
